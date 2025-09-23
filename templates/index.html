@@ -147,7 +147,6 @@
         // Drag & drop support for upload areas
         function wireDragAndDrop(areaId, inputId) {
             const area = document.getElementById(areaId);
-            const input = document.getElementById(inputId);
 
             ['dragenter', 'dragover'].forEach(evt => {
                 area.addEventListener(evt, function(e) {
@@ -166,23 +165,31 @@
             });
 
             area.addEventListener('drop', function(e) {
-                const dt = e.dataTransfer || e.originalEvent.dataTransfer;
+                const dt = e.dataTransfer || (e.originalEvent && e.originalEvent.dataTransfer);
                 if (dt && dt.files && dt.files.length > 0) {
-                    // If input supports multiple, assign all files; otherwise only first
+                    // Look up the input element at drop time so replacements/clones still work
+                    const currentInput = document.getElementById(inputId);
+                    if (!currentInput) return;
+
                     try {
-                        if (input.multiple) {
-                            input.files = dt.files;
+                        // Clear any previous selection so assigning the same files will still fire change
+                        try { currentInput.value = ''; } catch (clearErr) { /* ignore */ }
+
+                        // Build a new FileList via DataTransfer for reliable assignment
+                        const dataTransfer = new DataTransfer();
+                        if (currentInput.multiple) {
+                            for (let i = 0; i < dt.files.length; i++) {
+                                dataTransfer.items.add(dt.files[i]);
+                            }
                         } else {
-                            // Create a FileList with only the first file
-                            const file = dt.files[0];
-                            const dataTransfer = new DataTransfer();
-                            dataTransfer.items.add(file);
-                            input.files = dataTransfer.files;
+                            dataTransfer.items.add(dt.files[0]);
                         }
+
+                        currentInput.files = dataTransfer.files;
+
                         // Trigger change handlers
-                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                        currentInput.dispatchEvent(new Event('change', { bubbles: true }));
                     } catch (err) {
-                        // Some older browsers may block assigning to input.files; fallback to alert
                         console.error('Could not assign dropped files to input:', err);
                         alert('File drop not supported in this browser; please use the file picker.');
                     }
@@ -198,29 +205,30 @@
         function wireClearButton(areaId, inputId, extraClearCallback) {
             const area = document.getElementById(areaId);
             const btn = area.querySelector('.clear-btn');
-            const input = document.getElementById(inputId);
             const indicator = area.querySelector('.selection-indicator');
             const filenameEl = indicator.querySelector('.filename');
 
             btn.addEventListener('click', function() {
-                // Reset the input by replacing it with a clone (clears files reliably)
-                const newInput = input.cloneNode();
+                // Look up the current input element at click time so we don't hold a stale reference
+                const input = document.getElementById(inputId) || area.querySelector('input[type="file"]');
+                if (!input) return;
+
+                // Reset the input by replacing it with a shallow clone (clears files reliably)
+                const newInput = input.cloneNode(false);
                 input.parentNode.replaceChild(newInput, input);
-                // Re-wire events on the new input
+
+                // Optional extra clearing (e.g., clear file list for merge)
                 if (typeof extraClearCallback === 'function') {
                     extraClearCallback();
                 }
+
                 // Remove selected UI
                 area.classList.remove('selected');
                 filenameEl.textContent = '';
 
                 // Re-wire selection indicator for the new input element
                 wireSelectionIndicator(newInput.id, areaId);
-                // Re-wire drag & drop for the area (input ref changed for convert/split only)
-                // For simplicity, re-wire drag-and-drop to set the new input when dropped
-                newInput.addEventListener('change', function() {
-                    newInput.dispatchEvent(new Event('change', { bubbles: true }));
-                });
+                // Note: drag-and-drop handler reads the input by id on drop, so no extra wiring needed
             });
         }
 
