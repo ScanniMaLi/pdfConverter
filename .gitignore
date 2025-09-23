@@ -1,0 +1,44 @@
+# Virtual environments
+venv/
+.venv/
+
+# Local Python executable in project root
+python.exe
+
+# Uploads and generated files
+uploads/
+*.zip
+*.pdf
+
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# Test and coverage
+.pytest_cache/
+.coverage
+coverage.xml
+
+# Env files
+.env
+.env.*
+
+# Misc
+*.sqlite3

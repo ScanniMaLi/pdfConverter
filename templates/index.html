@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Converter</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>PDF Tools</h1>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab('convert')">Convert to PDF</button>
+            <button class="tab-btn" onclick="showTab('split')">Split PDF</button>
+            <button class="tab-btn" onclick="showTab('merge')">Merge PDFs</button>
+        </div>
+
+        <div id="convert" class="tab-content active">
+            <h2>Convert to PDF</h2>
+            <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data">
+                <div class="upload-area" id="convert-upload">
+                    <input type="file" id="file" name="file" accept=".doc,.docx,.txt,.png,.jpg,.jpeg" required>
+                    <label for="file">Choose a file or drag it here</label>
+                    <button type="button" class="clear-btn" aria-label="Clear selection">✕</button>
+                    <div class="selection-indicator" aria-hidden="true">
+                        <span class="check">✓</span>
+                        <span class="filename"></span>
+                    </div>
+                </div>
+                <button type="submit">Convert to PDF</button>
+            </form>
+            <div class="info">
+                <p>Supported file types: PNG, JPG, JPEG</p>
+                <p>The converted PDF will be automatically downloaded to your downloads folder.</p>
+            </div>
+        </div>
+
+        <div id="split" class="tab-content">
+            <h2>Split PDF</h2>
+            <form action="{{ url_for('split_pdf') }}" method="post" enctype="multipart/form-data">
+                <div class="upload-area" id="split-upload">
+                    <input type="file" id="pdf-to-split" name="file" accept=".pdf" required>
+                    <label for="pdf-to-split">Choose a PDF to split</label>
+                    <button type="button" class="clear-btn" aria-label="Clear selection">✕</button>
+                    <div class="selection-indicator" aria-hidden="true">
+                        <span class="check">✓</span>
+                        <span class="filename"></span>
+                    </div>
+                </div>
+                <div class="split-options">
+                    <label for="split-type">Split by:</label>
+                    <select id="split-type" name="split_type" required>
+                        <option value="range">Page Range</option>
+                        <option value="all">Individual Pages</option>
+                    </select>
+                    <div id="range-input">
+                        <input type="text" name="page_range" placeholder="e.g., 1-3, 4-6" pattern="[\d\-\,\s]+" title="Enter page ranges like: 1-3, 4-6">
+                        <small>For ranges, use format: 1-3, 4-6, etc.</small>
+                    </div>
+                </div>
+                <button type="submit">Split PDF</button>
+            </form>
+        </div>
+
+        <div id="merge" class="tab-content">
+            <h2>Merge PDFs</h2>
+            <form action="{{ url_for('merge_pdfs') }}" method="post" enctype="multipart/form-data">
+                <div class="upload-area" id="merge-upload">
+                    <input type="file" id="pdfs-to-merge" name="files[]" accept=".pdf" multiple required>
+                    <label for="pdfs-to-merge">Choose PDFs to merge (select multiple)</label>
+                    <button type="button" class="clear-btn" aria-label="Clear selection">✕</button>
+                    <div class="selection-indicator" aria-hidden="true">
+                        <span class="check">✓</span>
+                        <span class="filename"></span>
+                    </div>
+                </div>
+                <div class="file-list">
+                    <p>Selected files will appear here</p>
+                    <ul id="selected-files"></ul>
+                </div>
+                <button type="submit">Merge PDFs</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            // Remove active class from all buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            // Add active class to clicked button
+            event.currentTarget.classList.add('active');
+        }
+
+        // Update file list for merge tab
+        document.getElementById('pdfs-to-merge').addEventListener('change', function(e) {
+            const fileList = document.getElementById('selected-files');
+            fileList.innerHTML = '';
+            for(let file of this.files) {
+                const li = document.createElement('li');
+                li.textContent = file.name;
+                fileList.appendChild(li);
+            }
+        });
+
+        // Show/hide range input based on split type
+        document.getElementById('split-type').addEventListener('change', function(e) {
+            const rangeInput = document.getElementById('range-input');
+            rangeInput.style.display = this.value === 'range' ? 'block' : 'none';
+        });
+
+        // Utility to update selection indicator for a given upload area and file input
+        function wireSelectionIndicator(inputId, areaId) {
+            const input = document.getElementById(inputId);
+            const area = document.getElementById(areaId);
+            const indicator = area.querySelector('.selection-indicator');
+            const filenameEl = indicator.querySelector('.filename');
+
+            input.addEventListener('change', function() {
+                if (!input.files || input.files.length === 0) {
+                    area.classList.remove('selected');
+                    filenameEl.textContent = '';
+                } else {
+                    area.classList.add('selected');
+                    if (input.multiple) {
+                        filenameEl.textContent = input.files.length + ' file(s) selected';
+                    } else {
+                        filenameEl.textContent = input.files[0].name;
+                    }
+                }
+            });
+        }
+
+        // Wire indicators for convert, split and merge inputs
+        wireSelectionIndicator('file', 'convert-upload');
+        wireSelectionIndicator('pdf-to-split', 'split-upload');
+        wireSelectionIndicator('pdfs-to-merge', 'merge-upload');
+
+        // Drag & drop support for upload areas
+        function wireDragAndDrop(areaId, inputId) {
+            const area = document.getElementById(areaId);
+            const input = document.getElementById(inputId);
+
+            ['dragenter', 'dragover'].forEach(evt => {
+                area.addEventListener(evt, function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    area.classList.add('drag-over');
+                });
+            });
+
+            ['dragleave', 'drop'].forEach(evt => {
+                area.addEventListener(evt, function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    area.classList.remove('drag-over');
+                });
+            });
+
+            area.addEventListener('drop', function(e) {
+                const dt = e.dataTransfer || e.originalEvent.dataTransfer;
+                if (dt && dt.files && dt.files.length > 0) {
+                    // If input supports multiple, assign all files; otherwise only first
+                    try {
+                        if (input.multiple) {
+                            input.files = dt.files;
+                        } else {
+                            // Create a FileList with only the first file
+                            const file = dt.files[0];
+                            const dataTransfer = new DataTransfer();
+                            dataTransfer.items.add(file);
+                            input.files = dataTransfer.files;
+                        }
+                        // Trigger change handlers
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                    } catch (err) {
+                        // Some older browsers may block assigning to input.files; fallback to alert
+                        console.error('Could not assign dropped files to input:', err);
+                        alert('File drop not supported in this browser; please use the file picker.');
+                    }
+                }
+            });
+        }
+
+        wireDragAndDrop('convert-upload', 'file');
+        wireDragAndDrop('split-upload', 'pdf-to-split');
+        wireDragAndDrop('merge-upload', 'pdfs-to-merge');
+
+        // Clear selection buttons
+        function wireClearButton(areaId, inputId, extraClearCallback) {
+            const area = document.getElementById(areaId);
+            const btn = area.querySelector('.clear-btn');
+            const input = document.getElementById(inputId);
+            const indicator = area.querySelector('.selection-indicator');
+            const filenameEl = indicator.querySelector('.filename');
+
+            btn.addEventListener('click', function() {
+                // Reset the input by replacing it with a clone (clears files reliably)
+                const newInput = input.cloneNode();
+                input.parentNode.replaceChild(newInput, input);
+                // Re-wire events on the new input
+                if (typeof extraClearCallback === 'function') {
+                    extraClearCallback();
+                }
+                // Remove selected UI
+                area.classList.remove('selected');
+                filenameEl.textContent = '';
+
+                // Re-wire selection indicator for the new input element
+                wireSelectionIndicator(newInput.id, areaId);
+                // Re-wire drag & drop for the area (input ref changed for convert/split only)
+                // For simplicity, re-wire drag-and-drop to set the new input when dropped
+                newInput.addEventListener('change', function() {
+                    newInput.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+            });
+        }
+
+        wireClearButton('convert-upload', 'file');
+        wireClearButton('split-upload', 'pdf-to-split');
+        wireClearButton('merge-upload', 'pdfs-to-merge', function() {
+            // Also clear the merge file list
+            document.getElementById('selected-files').innerHTML = '';
+        });
+    </script>
+</body>
+</html>
