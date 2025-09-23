@@ -7,7 +7,7 @@ from io import BytesIO
 import zipfile
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['UPLOAD_FOLDER'] = './uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 def convert_image_to_pdf(input_path, output_path):
