@@ -52,7 +52,28 @@ Troubleshooting
   - Check that nothing else is listening on port 5000: `netstat -ano | Select-String ":5000"` (Windows)
   - If accessing from another machine, run the app with `host='0.0.0.0'` and ensure firewall allows the port.
 
-License
-- This project is provided under the repository's license file.
+# How to build
+1. Navigate to the repo root directory
+2. Activate venv 
 
-If you want, I can also add a `run_app.sh` wrapper for POSIX systems or add the scripts to `.gitignore`.
+   Windows:
+
+   `
+   ./venv/Scripts/activate
+   `
+
+   Linux:
+
+   `
+   source venv/bin/activate
+   `
+3. (Install pyinstaller inside venv)
+
+   `
+   pip install pyinstaller  
+   `
+4. Build .exe
+
+   `
+   pyinstaller --onefile app.py    
+   `
