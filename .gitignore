@@ -42,3 +42,6 @@ coverage.xml
 
 # Misc
 *.sqlite3
+
+# pyinstaller files
+*.spec
