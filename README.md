@@ -37,7 +37,7 @@ Quick setup (macOS / Linux / WSL)
 Run the server on a different port
 - Edit `app.py` to change the default port or run with a small one-liner:
 
-  # PowerShell example
+# PowerShell example
   .\python.exe - <<'PY'
 from app import app
 app.run(port=5001, debug=True)
@@ -75,5 +75,5 @@ Troubleshooting
 4. Build .exe
 
    `
-   pyinstaller --onefile app.py    
+   pyinstaller --onefile --add-data "templates;templates" --add-data "static;static" --name pdfconverter app.py    
    `
